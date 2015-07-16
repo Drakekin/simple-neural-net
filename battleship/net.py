@@ -1,8 +1,12 @@
+# coding=utf-8
+
 from __future__ import division
 
 import random
 import math
 from itertools import combinations
+import uuid
+from util import bar
 
 
 def clamp(n, min_value, max_value):
@@ -18,6 +22,16 @@ def log_sigmoid(n):
 
 
 class Neuron(object):
+    def __init__(self, activation_function):
+        self.activation_function = activation_function
+        self.inputs = []
+        self.outputs = []
+
+    def value(self):
+        return self.activation_function(sum(l.value() for l in self.inputs))
+
+
+class CombinedNeuron(object):
     def __init__(self, activation_function, rng, inputs=None, output=None):
         """
 
@@ -50,7 +64,7 @@ class Neuron(object):
 
     def set_output(self, output):
         self.output = output
-        if self not in self.output.inputs:
+        if self not in [n for n, w in self.output.inputs]:
             self.output.add_input(self)
 
     def input_weights(self):
@@ -61,7 +75,7 @@ class Neuron(object):
         self.inputs = zip(inputs, weights)
 
     def update(self):
-        inputs = sum(i.value * w for i, w in self.inputs) / len(self.inputs)
+        inputs = sum(i.value * w for i, w in self.inputs)
         self.value = self.activation_function(inputs)
         if self.output:
             self.output.update()
@@ -92,6 +106,8 @@ class Network(object):
                               to include for that layer
         """
 
+        self.name = str(uuid.uuid4())
+
         self.neurons = []
         self.parameters = (inputs, outputs, hidden_layers,
                            activation_function, rng)
@@ -103,19 +119,26 @@ class Network(object):
         top_layer = self.inputs
 
         for neurons in hidden_layers:
-            layer = [Neuron(activation_function, rng, inputs=top_layer)
+            layer = [CombinedNeuron(activation_function, rng, inputs=top_layer)
                      for _ in range(neurons)]
             self.neurons += layer
             self.hidden_layers.append(layer)
             top_layer = layer
 
-        self.outputs = [Neuron(activation_function, rng, inputs=top_layer)
+        self.outputs = [CombinedNeuron(activation_function, rng, inputs=top_layer)
                         for _ in range(outputs)]
         self.neurons += self.outputs
 
     def initialise(self):
         for neuron in self.neurons:
             neuron.mutate(1)  # mutate all inputs
+
+    def reset(self, value=0):
+        for input_ in self.inputs:
+            input_.update(value)
+
+    def input(self):
+        return [n.value for n in self.inputs]
 
     def output(self):
         return [n.value for n in self.outputs]
@@ -136,21 +159,29 @@ class Network(object):
 
         return new_network
 
+    def __str__(self):
+        inputs = u"".join([("X" if n.value == 1 else ("O" if n.value == -1 else "?")) for n in self.inputs])
+        layers = []
+        for layer in self.hidden_layers:
+            layers.append(u"LAYER:  {}".format(u"".join([bar(n.value, 0, 1) for n in layer])))
+        outputs = u"".join([bar(n.value, 0, 1) for n in self.outputs])
+        s = u"INPUT:  {}\n{}\nOUTPUT: {}".format(inputs, u"\n".join(layers), outputs)
+        return s.encode("utf8")
+
 
 class Trainer(object):
     def __init__(self, fitness_function, class_size, network_parameters,
                  cream, rng=random):
-        if math.factorial(cream) < class_size:
-            raise ValueError("cream is too small, !cream must be at least class_size")
-
         self.network_parameters = network_parameters
         self.class_size = class_size
         self.fitness_function = fitness_function
         self.cream = cream
+        self.best = None
         self.rng = rng
 
         self.stable = []
-        for _ in self.class_size:
+        for _ in range(self.class_size):
+            print "Seeding network", _, "of", self.class_size
             network = Network(*self.network_parameters)
             network.initialise()
             self.stable.append(network)
@@ -159,16 +190,32 @@ class Trainer(object):
         results = []
         for network in self.stable:
             results.append((network, task(network)))
+            network.reset()
+
+        if self.best:
+            results.append(self.best)
+
+        print "Ranking winners"
 
         ranked_results = sorted(
             results,
             key=lambda (n, r): self.fitness_function(r),
             reverse=True
         )
+        best_result = ranked_results[0]
+        self.best = best_result
+        bn, best = best_result
+        wn, worst = ranked_results[-1]
+
+        print "Best score was", best, bn.name
+        print "Worst score was", worst, wn.name
+
         cream = ranked_results[:self.cream]
-        potentials = combinations(cream, 2)
-        parents = self.rng.sample(potentials, self.class_size)
+        print "Selected", len(cream), "best networks"
+        potentials = list(combinations(cream, 2))
+        parents = sum([potentials] * int(math.ceil(self.class_size / len(potentials))), [])[:self.class_size]
         self.stable = [a.produce_offspring(b) for ((a, _), (b, _)) in parents]
+        print "Produced", len(self.stable), "new networks"
 
     def train(self, task, rounds):
         """
@@ -182,5 +229,7 @@ class Trainer(object):
         rerun.
         """
         for _ in range(rounds):
+            print "Starting round", _
             self.run_round(task)
+            print
 
