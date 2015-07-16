@@ -5,7 +5,7 @@ import math
 import multiprocessing
 
 from battleship.trainer import Trainer
-from battleship.battleship import BattleshipBoard
+from battleship.game import BattleshipBoard
 
 
 def n_to_coord(n):
