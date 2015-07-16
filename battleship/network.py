@@ -101,7 +101,9 @@ class Network(object):
         neuron_class = kwargs.get("neuron_class", LogSigmoidNeuron)
         identifier = count()
 
-        self.name = names.name()
+        self.first_name = names.first_name()
+        self.last_names = []
+        self.generation = 0
 
         self.layers = [[Sensor(next(identifier)) for _ in range(inputs)]]
         self.connections = {}
@@ -115,18 +117,28 @@ class Network(object):
             self.layers.append(n_layer)
 
     def initialise(self, rng):
+        self.last_names.append(names.last_name())
         for connection in self.connections.itervalues():
             connection.mutate(rng, mutation_rate=1)
 
     def cross(self, rng, *parents):
         parent_connections = {k: [p.connections[k] for p in parents] for k in self.connections}
+        self.last_names = [rng.choice(p.last_names) for p in parents]
+        self.generation = max(p.generation for p in parents) + 1
         for connection, candidates in parent_connections.iteritems():
             self.connections[connection].weight = rng.choice(candidates).weight
             self.connections[connection].mutate(rng)
 
+    @property
+    def name(self):
+        return "{} {} (Gen. {})".format(
+            self.first_name, "-".join(self.last_names), self.generation)
+
     def clone(self):
         new_network = Network(*[len(layer) for layer in self.layers])
-        new_network.name = self.name
+        new_network.generation = self.generation
+        new_network.first_name = self.first_name
+        new_network.last_names = self.last_names
         for hash_, connection in new_network.connections.iteritems():
             connection.weight = self.connections[hash_].weight
         return new_network
