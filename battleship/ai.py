@@ -27,6 +27,8 @@ def play_battleships(network):
         target, chance = max(options, key=lambda (n, c): c)
 
         result = board.hit_n(target)
+        display = str(board)
+        yield "Targeted {} ({}% chance)\nGot a {}\n{}".format(n_to_coord(target), round(chance * 100), result, display)
 
         hit.add(target)
 
@@ -41,13 +43,12 @@ def play_battleships(network):
         turns += 1
 
     print network.name, "took", turns, "turns"
-    return turns
 
 def battleship_trainer(network):
     games = 5
 
-    print "Playing", network.name, "for", games, "rounds"
-    score = sum(map(play_battleships, [network] * games)) / games
+    print "Training", network.name, "for", games, "rounds"
+    score = sum(map(lambda n: len(list(play_battleships(n))), [network] * games)) / games
     print network.name, "scored an average of", score
     return score
 
@@ -62,3 +63,6 @@ if __name__ == "__main__":
 
     best, score = trainer.best
     print "Winning network won in an average of", score, "turns"
+    for move in play_battleships(best):
+        print move
+        print "="*20
