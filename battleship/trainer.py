@@ -1,17 +1,19 @@
 import random
+from multiprocessing import Pool
 
 from battleship.network import Network
 
 
 class Trainer(object):
     def __init__(self, fitness_function, class_size, network_parameters,
-                 cream, rng=random):
+                 cream, rng=random, threads=5):
         self.network_parameters = network_parameters
         self.class_size = class_size
         self.fitness_function = fitness_function
         self.cream = cream
         self.best = None
         self.rng = rng
+        self.pool = Pool(threads)
 
         self.stable = []
         for _ in range(self.class_size):
@@ -21,12 +23,7 @@ class Trainer(object):
             self.stable.append(network)
 
     def run_round(self, task):
-        results = []
-        for n, network in enumerate(self.stable):
-            print "Training network #{}".format(n)
-            results.append((network, task(network)))
-            network.reset()
-
+        results = zip(self.stable, self.pool.map(task, self.stable))
         if self.best:
             results.append(self.best)
 
@@ -50,7 +47,11 @@ class Trainer(object):
         print "Selected", len(cream), "best networks"
 
         new_class = []
-        for _ in range(self.class_size):
+        for _ in range(self.cream):
+            new_blood = Network(*self.network_parameters)
+            new_blood.initialise(self.rng)
+            new_class.append(new_blood)
+        while len(new_class) < self.class_size:
             new_network = Network(*self.network_parameters)
             new_network.cross(self.rng, *cream)
             new_class.append(new_network)
