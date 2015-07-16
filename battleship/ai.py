@@ -1,10 +1,11 @@
 # coding=utf-8
 from __future__ import division
 
-from netv2 import Trainer
-from battleship import BattleshipBoard
 import math
 import multiprocessing
+
+from battleship.trainer import Trainer
+from battleship.battleship import BattleshipBoard
 
 
 def n_to_coord(n):

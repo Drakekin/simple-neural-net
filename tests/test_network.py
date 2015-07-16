@@ -1,5 +1,6 @@
-from battleship.netv2 import Network
 from random import Random
+
+from battleship.network import Network
 
 
 def test_crossing_networks():
