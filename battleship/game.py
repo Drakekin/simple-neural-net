@@ -31,6 +31,7 @@ class BattleshipBoard(object):
             ships.append(ship)
 
         self.board = board
+        self.misses = set()
         self.ships = ships
 
     def hit_coord(self, location):
@@ -51,6 +52,7 @@ class BattleshipBoard(object):
             if all([not p for p in self.board[location].itervalues()]):
                 return len(self.board[location])
             return "h"
+        self.misses.add(location)
         return "m"
 
     def board_list(self):
@@ -72,7 +74,7 @@ class BattleshipBoard(object):
         for y in range(10):
             line = str(y + 1) + (" " if y != 9 else "")
             for x in range(10):
-                marker = "-"
+                marker = "." if (x, y) in self.misses else " "
                 if self.board[x, y]:
                     if self.board[x, y][x, y]:
                         marker = str(len(self.board[x, y]))
