@@ -22,7 +22,8 @@ class Trainer(object):
 
     def run_round(self, task):
         results = []
-        for network in self.stable:
+        for n, network in enumerate(self.stable):
+            print "Training network #{}".format(n)
             results.append((network, task(network)))
             network.reset()
 
@@ -51,7 +52,8 @@ class Trainer(object):
         new_class = []
         for _ in range(self.class_size):
             new_network = Network(*self.network_parameters)
-            new_network.cross(*cream)
+            new_network.cross(self.rng, *cream)
+            new_class.append(new_network)
         self.stable = new_class
         print "Produced", len(self.stable), "new networks"
 

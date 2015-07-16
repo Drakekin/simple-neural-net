@@ -48,8 +48,10 @@ def battleship_trainer(games=5):
     def train(network):
         print "Playing", network.name, "for", games, "rounds"
         pool = multiprocessing.Pool(games)
-        results = pool.map(play_battleships, [network.clone() for _ in range(games)])
-        return sum(results) / games
+        results = pool.map(play_battleships, [network] * games)
+        score = sum(results) / games
+        print network.name, "scored an average of", score
+        return score
     return train
 
 
