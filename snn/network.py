@@ -1,6 +1,8 @@
 from __future__ import division
 
 import math
+import cPickle
+import os.path
 
 from faker import Faker
 
@@ -84,7 +86,8 @@ class Neuron(Node):
     def value(self):
         inputs_last_changed = [i.last_changed for i in self._inputs]
         if not inputs_last_changed == self._inputs_last_changed:
-            self._value = self.activation_function(sum(c.value for c in self._inputs))
+            total_inputs = sum(c.value for c in self._inputs)
+            self._value = self.activation_function(total_inputs)
             self._inputs_last_changed = inputs_last_changed
             self.last_changed += 1
         return self._value
@@ -97,6 +100,11 @@ class LogSigmoidNeuron(Neuron):
 
 
 class Network(object):
+    __slots__ = [
+        "first_name", "last_names", "generation",
+        "layers", "connections"
+    ]
+
     def __init__(self, inputs, *layers, **kwargs):
         neuron_class = kwargs.get("neuron_class", LogSigmoidNeuron)
         identifier = count()
@@ -122,7 +130,8 @@ class Network(object):
             connection.mutate(rng, mutation_rate=1)
 
     def cross(self, rng, *parents):
-        parent_connections = {k: [p.connections[k] for p in parents] for k in self.connections}
+        parent_connections = {k: [p.connections[k] for p in parents]
+                              for k in self.connections}
         self.last_names = [rng.choice(p.last_names) for p in parents]
         self.generation = max(p.generation for p in parents) + 1
         for connection, candidates in parent_connections.iteritems():
@@ -133,15 +142,6 @@ class Network(object):
     def name(self):
         return "{} {} (Gen. {})".format(
             self.first_name, "-".join(self.last_names), self.generation)
-
-    def clone(self):
-        new_network = Network(*[len(layer) for layer in self.layers])
-        new_network.generation = self.generation
-        new_network.first_name = self.first_name
-        new_network.last_names = self.last_names
-        for hash_, connection in new_network.connections.iteritems():
-            connection.weight = self.connections[hash_].weight
-        return new_network
 
     def reset(self):
         for input_ in self.inputs:
@@ -161,5 +161,24 @@ class Network(object):
     def output(self):
         return [n.value for n in self.outputs]
 
+    @classmethod
+    def load(cls, pickled_string):
+        return cPickle.loads(pickled_string)
 
+    @classmethod
+    def load_from_file(cls, filename):
+        with open(filename, "b") as pickled_network:
+            return cls.load(pickled_network.read())
 
+    def save(self):
+        return cPickle.dumps(self, protocol=2)
+    
+    def save_to_file(self, filename=None, path=None):
+        if filename is None:
+            filename = "{}_{}-{}.network".format(
+                self.first_name, "-".join(self.last_names), self.generation)
+        if path is not None:
+            filename = os.path.join(path, filename)
+
+        with open(filename, "wb") as pickled_network:
+            pickled_network.write(self.save())
