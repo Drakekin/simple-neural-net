@@ -1,7 +1,7 @@
 import random
 from multiprocessing import Pool
 
-from battleship.network import Network
+from snn.network import Network
 
 
 class Trainer(object):

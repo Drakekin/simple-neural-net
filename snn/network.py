@@ -4,7 +4,7 @@ import math
 
 from faker import Faker
 
-from battleship.util import clamp, count
+from snn.util import clamp, count
 
 names = Faker()
 

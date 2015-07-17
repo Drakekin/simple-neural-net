@@ -3,9 +3,9 @@ from __future__ import division
 
 import math
 
-from battleship.trainer import Trainer
+from snn.trainer import Trainer
 from battleship.game import BattleshipBoard
-from battleship.util import bar, chunk
+from snn.util import bar, chunk
 
 
 def n_to_coord(n):
