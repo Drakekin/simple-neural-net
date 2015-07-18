@@ -58,6 +58,10 @@ def battleship_trainer(network):
     return score
 
 
+def battleship_fitness(score):
+    return -score
+
+
 if __name__ == "__main__":
     parameters = (105, 103, 100)
     print "Creating trainer"

@@ -1,26 +1,35 @@
 import random
 from multiprocessing import Pool
+from time import time
 
 from snn.network import Network
 
 
+def create_network((rng, parameters)):
+    print "Creating a network with parameters", parameters
+    rng.jumpahead(int(time()))
+    network = Network(*parameters)
+    network.initialise(rng)
+    return network
+
+
 class Trainer(object):
     def __init__(self, fitness_function, class_size, network_parameters,
-                 cream, rng=random, threads=5):
+                 cream, rng=None, threads=5):
         self.network_parameters = network_parameters
         self.class_size = class_size
         self.fitness_function = fitness_function
         self.cream = cream
         self.best = None
-        self.rng = rng
+        self.rng = rng if rng is not None else random.Random()
         self.pool = Pool(threads)
-
         self.stable = []
-        for _ in range(self.class_size):
-            print "Seeding network", _, "of", self.class_size
-            network = Network(*self.network_parameters)
-            network.initialise(self.rng)
-            self.stable.append(network)
+
+    def spawn_class(self):
+        network_parameter_list = [(self.rng, self.network_parameters)] * self.class_size
+        print "Seeding networks"
+        self.stable = self.pool.map(create_network, network_parameter_list)
+        print "Networks seeded"
 
     def run_round(self, task):
         results = zip(self.stable, self.pool.map(task, self.stable))

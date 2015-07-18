@@ -167,7 +167,7 @@ class Network(object):
 
     @classmethod
     def load_from_file(cls, filename):
-        with open(filename, "b") as pickled_network:
+        with open(filename, "rb") as pickled_network:
             return cls.load(pickled_network.read())
 
     def save(self):
